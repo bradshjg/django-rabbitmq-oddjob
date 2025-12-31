@@ -1,0 +1,13 @@
+services:
+  project:
+    image: "mcr.microsoft.com/devcontainers/python"
+    volumes:
+      - .:/workspaces/django-rabbitmq-oddjob:cached
+    command: /bin/sh -c "while sleep 1000; do :; done"
+  rabbitmq:
+    image: "rabbitmq"
+    ports:
+      - "5672:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "guest"
+      RABBITMQ_DEFAULT_PASS: "guest"

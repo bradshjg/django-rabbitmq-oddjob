@@ -1,0 +1,77 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "django-rabbitmq-oddjob"
+dynamic = ["version"]
+description = ''
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "James Bradshaw", email = "james.g.bradshaw@gmail.com" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = ["django", "pika"]
+
+[project.urls]
+Documentation = "https://github.com/bradshjg/django-rabbitmq-oddjob#readme"
+Issues = "https://github.com/bradshjg/django-rabbitmq-oddjob/issues"
+Source = "https://github.com/bradshjg/django-rabbitmq-oddjob"
+
+[project.optional-dependencies]
+test = [
+  "pytest~=8.1",
+  "pytest-django~=4.11",
+  "pytest-mock~=3.12",
+  "pytest-randomly~=3.15",
+  "pytest-rerunfailures~=14.0",
+  "pytest-xdist[psutil]~=3.5",
+]
+
+[tool.hatch.version]
+path = "src/django_rabbitmq_oddjob/__about__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/django_rabbitmq_oddjob tests}"
+
+[tool.coverage.run]
+source_pkgs = ["django_rabbitmq_oddjob", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/django_rabbitmq_oddjob/__about__.py",
+]
+
+[tool.coverage.paths]
+django_rabbitmq_oddjob = ["src/django_rabbitmq_oddjob", "*/django-rabbitmq-oddjob/src/django_rabbitmq_oddjob"]
+tests = ["tests", "*/django-rabbitmq-oddjob/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[tool.hatch.envs.dev]
+path = ".venv/dev"
+features = [
+  "test",
+]

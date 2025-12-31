@@ -1,0 +1,21 @@
+{
+    "name": "django-rabbitmq-oddjob",
+    "dockerComposeFile": "../compose.yml",
+    "service": "project",
+    "workspaceFolder": "/workspaces/django-rabbitmq-oddjob",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/workspaces/django-rabbitmq-oddjob/.venv/dev/bin/python"
+            }
+        }
+    },
+    "features": {
+        "ghcr.io/devcontainers-extra/features/hatch:2": {}
+    },
+    "postCreateCommand": ["hatch", "env", "create", "dev"],
+    "postAttachCommand": ["hatch", "shell", "--name", "zsh", "dev"]
+}
