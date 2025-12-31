@@ -1,7 +1,5 @@
 # django-rabbitmq-oddjob
 
------
-
 Oddjob fulfills a very narrow use case. It supports the ability to offload tasks to threads and retrieve the results of those tasks over HTTP. The temporary storage of task results is mediated by RabbitMQ.
 
 If you have a task you want to (rarely) run outside the request/response cycle and have a RabbitMQ broker but no database, this might be a fit. But probably not :-)
@@ -18,7 +16,6 @@ Non-goals:
 
 * Not robust to transient network issues or web worker termination, assumes clients can retry
 * No concurrency control, assumes low volume usage
-
 
 ## Table of Contents
 
@@ -38,7 +35,7 @@ In Django settings, include `django_rabbitmq_oddjob` as an installed app and sup
 
 ```python
 INSTALLED_APPS = [
-    "django_rabbitmq_oddjob.apps.OddjobConfig",
+    "django_rabbitmq_oddjob",
     ...,
 ]
 

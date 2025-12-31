@@ -48,8 +48,24 @@ path = "src/django_rabbitmq_oddjob/__about__.py"
 extra-dependencies = [
   "mypy>=1.0.0",
 ]
+
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:src/django_rabbitmq_oddjob tests}"
+
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ["3.10", "3.13"]
+django = ["4.2", "latest"]
+
+[tool.hatch.envs.hatch-test]
+extra-args = ["-vv"]
+features = [
+  "test",
+]
+
+[tool.hatch.envs.hatch-test.overrides]
+matrix.django.dependencies = [
+  { value = "django~=4.2", if = ["4.2"] }
+]
 
 [tool.coverage.run]
 source_pkgs = ["django_rabbitmq_oddjob", "tests"]
@@ -75,3 +91,8 @@ path = ".venv/dev"
 features = [
   "test",
 ]
+
+[tool.pytest.ini_options]
+django_find_project = false
+DJANGO_SETTINGS_MODULE = "django_project.settings"
+pythonpath = "tests/django_project"

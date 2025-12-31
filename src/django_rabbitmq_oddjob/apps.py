@@ -1,5 +1,6 @@
 from django.apps import AppConfig
 
 
-class OddjobConfig(AppConfig):
-    name = "oddjob"
+class DjangoRabbitmqOddjobConfig(AppConfig):
+    name = "django_rabbitmq_oddjob"
+    verbose_name = "Django RabbitMQ Oddjob Integration"
