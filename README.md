@@ -10,7 +10,7 @@ Goals:
 
 * No extra proceses/workers to manage (threads are spun off ad-hoc)
 * Automatic cleanup (queue TTLs ensure queues are deleted even if results are never read)
-* Support optional security via Django user model (only return results to a specific user)
+* Default security via Django user model (only return results to calling user)
 
 Non-goals:
 
@@ -60,13 +60,17 @@ urlpatterns = [
 
 Tasks are functions decorated with `@oddjob` that must return a JSON-serializable value.
 
-The decorated functions can be called normally (which will block as if it were undecorated), or called via the `async` method which will return the url to poll for the result. The `async` method takes an optional `oddjob_username` parameter. If supplied, the result will only be returned if the `request.user.username` matches the supplied value (otherwise a 404 will be returned).
+The decorated functions can be called normally (as if it were undecorated), or called via an `async` method which will return the url to poll for the result. The `async` method signature is
 
 ```python
-import time
+decorated_function.async(args=(), kwargs={}, *, request, public=False) -> str
+```
 
-import requests
+`args` and `kwargs` are passed transparently to the wrapped function. `request` is the Django request object. `public` is a boolean that controls whether fetching the result requires that the `request.user.username` for the current request matches that of the initial `async` call.
 
+
+`tasks.py`
+```python
 from django_rabbitmq_oddjob import oddjob
 
 @oddjob
@@ -76,13 +80,33 @@ def add(x: int, y: int) -> dict[str, int]:
         "y": y,
         "sum": x + y
     }
+```
 
-result_url = add.async(1, 2, oddjob_username="some_user")
+`views.py`
+```python
+from django.http import JSONResponse
+
+def launch_add_task(request):
+    result_url = add.async(args=(1, 2), request=request)
+    return JSONResponse({"result_url": result_url})
+```
+
+`poll.py`
+```python
+import time
+
+import requests
+
+# launch task
+resp = request.post("/path/to/launch/add/task/")
+resp.raise_for_status()
+result_url = resp.json()["result_url"]
 
 # poll for result
 resp_status = None
 while resp_status != 200:
-    resp = request.get(result_url, auth=("some_user", "some_password"))
+    resp = request.get(result_url)
+    resp.raise_for_status()
     resp_status = resp.status_code
     if resp_status == 200:
         result = resp.json()
