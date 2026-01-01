@@ -4,7 +4,6 @@ from django_rabbitmq_oddjob.amqp_transport import AMQPTransport
 from django_rabbitmq_oddjob.exceptions import OddjobAuthorizationError, OddjobInvalidResultTokenError
 
 
-
 def result(request, result_token):
     """Get the result of an oddjob task using the result token
 

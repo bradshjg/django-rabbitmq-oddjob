@@ -1,20 +1,18 @@
 import base64
-import pytest
-from typing import Generator
-from unittest import mock
 
+import pytest
 from pika.adapters.blocking_connection import BlockingChannel
 
 from django_rabbitmq_oddjob.amqp_transport import AMQPTransport
-from django_rabbitmq_oddjob.exceptions import OddjobInvalidResultTokenError, OddjobAuthorizationError
+from django_rabbitmq_oddjob.exceptions import OddjobAuthorizationError, OddjobInvalidResultTokenError
+
 
 @pytest.fixture
-def transport(rf, django_user_model) -> Generator[AMQPTransport, None, None]:
+def transport(rf, django_user_model) -> AMQPTransport:
     user = django_user_model.objects.create_user(username="someuser", password="somepassword")
     request = rf.get("/")
     request.user = user
-    transport = AMQPTransport(request=request)
-    yield transport
+    return AMQPTransport(request=request)
 
 
 def test_get_result_token_creates_auto_named_queue_with_default_ttl(mocker, transport):
@@ -49,6 +47,7 @@ def test_get_result_token_creates_auto_named_queue_with_custom_ttl(mocker, rf, s
     }
     assert queue_declare_kwargs == expected_kwargs
 
+
 def test_get_result_for_nonexistent_token_raises_result_token_error(transport):
     # invalid encoding
     with pytest.raises(OddjobInvalidResultTokenError):
@@ -57,6 +56,7 @@ def test_get_result_for_nonexistent_token_raises_result_token_error(transport):
     # invalid queue
     with pytest.raises(OddjobInvalidResultTokenError):
         transport.get_result(result_token=base64.urlsafe_b64encode(b"non_existent").decode())
+
 
 def test_get_public_result_requires_no_auth(transport, rf):
     token = transport.get_result_token()
@@ -67,6 +67,7 @@ def test_get_public_result_requires_no_auth(transport, rf):
 
     res = anon_transport.get_result(token)
     assert res == expected_data
+
 
 def test_get_private_result_requires_same_publisher_and_fetcher(transport, rf):
     token = transport.get_result_token()
@@ -82,6 +83,7 @@ def test_get_private_result_requires_same_publisher_and_fetcher(transport, rf):
     # result can still be fetched by authorized user
     res = transport.get_result(token)
     assert res == expected_data
+
 
 def test_result_can_only_be_fetched_once(transport):
     token = transport.get_result_token()

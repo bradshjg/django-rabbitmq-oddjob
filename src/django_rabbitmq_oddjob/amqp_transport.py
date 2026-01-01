@@ -1,19 +1,23 @@
+from __future__ import annotations
 
-
-import json
 import base64
+import json
 import typing
 from contextlib import contextmanager
 
 from django.conf import settings
 from pika import BlockingConnection, URLParameters
-from pika.adapters.blocking_connection import BlockingChannel
 
 from django_rabbitmq_oddjob.exceptions import (
     OddjobAuthorizationError,
-    OddjobException,
+    OddjobGenerateResultTokenError,
+    OddjobGetResultError,
     OddjobInvalidResultTokenError,
+    OddjobPublishResultError,
 )
+
+if typing.TYPE_CHECKING:
+    from pika.adapters.blocking_connection import BlockingChannel
 
 
 class AMQPTransport:
@@ -21,7 +25,9 @@ class AMQPTransport:
 
     Pika is generally not thread-safe, each connection must be created in a separate thread.
     """
+
     DEFAULT_QUEUE_TTL = 300_000  # 5 minutes in milliseconds
+    NOT_FOUND = 404
 
     def __init__(self, request):
         self.rabbitmq_url = settings.ODDJOB_SETTINGS["rabbitmq_url"]
@@ -37,11 +43,11 @@ class AMQPTransport:
             try:
                 res = channel.queue_declare(queue="", arguments={"x-expires": self.queue_ttl})
             except Exception as e:
-                raise OddjobException(f"Failed to get result token") from e
+                raise OddjobGenerateResultTokenError from e
 
         return self._token_from_queue(res.method.queue)
 
-    def publish_result(self, result_token: str, result_data: dict, public=False) -> None:
+    def publish_result(self, result_token: str, result_data: dict, *, public=False) -> None:
         """Publish the result data to RabbitMQ.
 
         The structure of the published data is as follows:
@@ -65,9 +71,9 @@ class AMQPTransport:
                     body=json.dumps(result_data),
                 )
             except Exception as e:
-                raise OddjobException(f"Failed to publish result") from e
+                raise OddjobPublishResultError from e
 
-    def get_result(self, result_token: str) -> typing.Optional[dict]:
+    def get_result(self, result_token: str) -> dict | None:
         """Retrieve the result for a given result token.
 
         A result can only retrieved once. Subsequent calls with the same token will raise
@@ -86,9 +92,9 @@ class AMQPTransport:
             try:
                 method, _properties, body = channel.basic_get(queue=queue_name)
             except Exception as e:
-                if hasattr(e, "reply_code") and e.reply_code == 404:
-                    raise OddjobInvalidResultTokenError()
-                raise OddjobException(f"Failed to get result") from e
+                if hasattr(e, "reply_code") and e.reply_code == self.NOT_FOUND:
+                    raise OddjobInvalidResultTokenError from None
+                raise OddjobGetResultError from e
             else:
                 if not method:
                     return
@@ -102,21 +108,17 @@ class AMQPTransport:
                     # Case 1: No auth required
                     channel.queue_delete(queue=queue_name)
                     return data["r"]
-                else:
-                    # Case 2 and 3: Auth required
-                    required_username = data["u"]
-                    if self.username != required_username:
-                        channel.basic_nack(method.delivery_tag, requeue=True)
-                        raise OddjobAuthorizationError()
-                    else:
-                        channel.queue_delete(queue=queue_name)
-                        return data["r"]
+                # Case 2 and 3: Auth required
+                required_username = data["u"]
+                if self.username != required_username:
+                    channel.basic_nack(method.delivery_tag, requeue=True)
+                    raise OddjobAuthorizationError
+                channel.queue_delete(queue=queue_name)
+                return data["r"]
 
     @contextmanager
     def _get_channel(self) -> typing.Generator[BlockingChannel, None, None]:
-        connection = BlockingConnection(
-            URLParameters(settings.ODDJOB_SETTINGS["rabbitmq_url"])
-        )
+        connection = BlockingConnection(URLParameters(settings.ODDJOB_SETTINGS["rabbitmq_url"]))
         try:
             yield connection.channel()
         finally:
@@ -131,4 +133,4 @@ class AMQPTransport:
         try:
             return base64.urlsafe_b64decode(result_token.encode()).decode()
         except Exception as e:
-            raise OddjobInvalidResultTokenError
+            raise OddjobInvalidResultTokenError from e

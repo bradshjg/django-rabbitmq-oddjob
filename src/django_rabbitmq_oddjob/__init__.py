@@ -3,3 +3,5 @@
 # SPDX-License-Identifier: MIT
 
 from django_rabbitmq_oddjob.task_decorator import oddjob
+
+__all__ = ["oddjob"]
