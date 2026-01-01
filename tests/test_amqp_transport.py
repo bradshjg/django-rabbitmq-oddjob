@@ -9,7 +9,7 @@ from django_rabbitmq_oddjob.amqp_transport import AMQPTransport
 from django_rabbitmq_oddjob.exceptions import OddjobInvalidResultTokenError, OddjobAuthorizationError
 
 @pytest.fixture
-def transport(rf, django_user_model) -> Generator[AMQPTransport]:
+def transport(rf, django_user_model) -> Generator[AMQPTransport, None, None]:
     user = django_user_model.objects.create_user(username="someuser", password="somepassword")
     request = rf.get("/")
     request.user = user

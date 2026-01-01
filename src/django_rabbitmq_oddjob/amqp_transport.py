@@ -26,7 +26,11 @@ class AMQPTransport:
     def __init__(self, request):
         self.rabbitmq_url = settings.ODDJOB_SETTINGS["rabbitmq_url"]
         self.queue_ttl = settings.ODDJOB_SETTINGS.get("queue_ttl", self.DEFAULT_QUEUE_TTL)
-        self.request = request
+        # eagerly resolve username to avoid DB access in other threads
+        if hasattr(request, "user"):
+            self.username = request.user.username
+        else:
+            self.username = None
 
     def get_result_token(self) -> str:
         with self._get_channel() as channel:
@@ -49,9 +53,8 @@ class AMQPTransport:
         result_data = {
             "r": result_data,
         }
-        current_username = self._get_current_username()
-        if not public and current_username:
-            result_data.update({"u": current_username})
+        if not public and self.username:
+            result_data.update({"u": self.username})
 
         with self._get_channel() as channel:
             queue_name = self._queue_from_token(result_token)
@@ -102,8 +105,7 @@ class AMQPTransport:
                 else:
                     # Case 2 and 3: Auth required
                     required_username = data["u"]
-                    current_username = self._get_current_username()
-                    if current_username != required_username:
+                    if self.username != required_username:
                         channel.basic_nack(method.delivery_tag, requeue=True)
                         raise OddjobAuthorizationError()
                     else:
@@ -111,7 +113,7 @@ class AMQPTransport:
                         return data["r"]
 
     @contextmanager
-    def _get_channel(self) -> typing.Generator[BlockingChannel]:
+    def _get_channel(self) -> typing.Generator[BlockingChannel, None, None]:
         connection = BlockingConnection(
             URLParameters(settings.ODDJOB_SETTINGS["rabbitmq_url"])
         )
@@ -119,11 +121,6 @@ class AMQPTransport:
             yield connection.channel()
         finally:
             connection.close()
-
-    def _get_current_username(self) -> typing.Optional[str]:
-        if not hasattr(self.request, "user"):
-            return
-        return self.request.user.get_username()
 
     def _token_from_queue(self, queue_name: str) -> str:
         """Generate a result token from a RabbitMQ queue name."""
