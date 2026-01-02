@@ -26,22 +26,22 @@ class AMQPTransport:
     Pika is generally not thread-safe, each connection must be created in a separate thread.
     """
 
-    DEFAULT_QUEUE_TTL = 300_000  # 5 minutes in milliseconds
+    DEFAULT_QUEUE_TTL = 300  # 5 minutes in seconds
     NOT_FOUND = 404
 
     def __init__(self, request):
         self.rabbitmq_url = settings.ODDJOB_SETTINGS["rabbitmq_url"]
-        self.queue_ttl = settings.ODDJOB_SETTINGS.get("queue_ttl", self.DEFAULT_QUEUE_TTL)
+        self.queue_ttl_ms = settings.ODDJOB_SETTINGS.get("queue_ttl", self.DEFAULT_QUEUE_TTL) * 1000  # in milliseconds
         # eagerly resolve username to avoid DB access in other threads
         if hasattr(request, "user"):
-            self.username = request.user.username
+            self.username = request.user.get_username()
         else:
             self.username = None
 
     def get_result_token(self) -> str:
         with self._get_channel() as channel:
             try:
-                res = channel.queue_declare(queue="", arguments={"x-expires": self.queue_ttl})
+                res = channel.queue_declare(queue="", arguments={"x-expires": self.queue_ttl_ms})
             except Exception as e:
                 raise OddjobGenerateResultTokenError from e
 

@@ -60,18 +60,25 @@ urlpatterns = [
 
 Tasks are functions decorated with `@oddjob` that must return a JSON-serializable value.
 
-The decorated functions can be called normally (as if it were undecorated), or called via an `run_in_thread` method which will return the url to poll for the result. The `run_in_thread` method signature is
+The decorated functions can be called normally (as if it were undecorated), or called via the `run_in_thread` method which will return the url to poll for the result. The `run_in_thread` method signature is
 
 ```python
 decorated_function.run_in_thread(args=(), kwargs={}, *, request, public=False) -> str
 ```
 
-`args` and `kwargs` are passed transparently to the wrapped function. `request` is the Django request object. `public` is a boolean that controls whether fetching the result requires that the `request.user.username` for the current request matches that of the initial `run_in_thread` call.
+`args` and `kwargs` are passed transparently to the wrapped function. `request` is the Django request object. `public` is a boolean that controls whether fetching the result requires that the `request.user.username` for the current request matches that of the initial `run_in_thread` call. The return value is a URL that can be used to fetch the result.
+
+The endpoint that returns results uses the following HTTP status codes:
+
+* `200` - successfully retrieved task result (result in body as json)
+* `204` - task result not yet available
+* `404` - unauthorized for result or non-existent task
 
 
 `tasks.py`
 ```python
 from django_rabbitmq_oddjob import oddjob
+
 
 @oddjob
 def add(x: int, y: int) -> dict[str, int]:
@@ -88,6 +95,7 @@ from django.http import JSONResponse
 
 from tasks import add
 
+
 def launch_add_task(request):
     result_url = add.run_in_thread(args=(1, 2), request=request)
     return JSONResponse({"result_url": result_url})
@@ -98,6 +106,7 @@ def launch_add_task(request):
 import time
 
 import requests
+
 
 # launch task
 resp = request.post("/path/to/launch/add/task/")
