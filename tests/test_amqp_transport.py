@@ -23,13 +23,13 @@ def test_get_result_token_creates_auto_named_queue_with_default_ttl(mocker, tran
     queue_declare_kwargs = queue_declare_spy.mock_calls[0].kwargs
     expected_kwargs = {
         "queue": "",
-        "arguments": {"x-expires": transport.DEFAULT_QUEUE_TTL},
+        "arguments": {"x-expires": transport.DEFAULT_QUEUE_TTL * 1000},  # x-expires uses milliseconds
     }
     assert queue_declare_kwargs == expected_kwargs
 
 
 def test_get_result_token_creates_auto_named_queue_with_custom_ttl(mocker, rf, settings):
-    expected_queue_ttl = 600_000  # 10 minutes in milliseconds
+    expected_queue_ttl = 600  # 10 minutes in seconds
     new_oddjob_settings = settings.ODDJOB_SETTINGS.copy()
     new_oddjob_settings.update({"queue_ttl": expected_queue_ttl})
     settings.ODDJOB_SETTINGS = new_oddjob_settings
@@ -43,7 +43,7 @@ def test_get_result_token_creates_auto_named_queue_with_custom_ttl(mocker, rf, s
     queue_declare_kwargs = queue_declare_spy.mock_calls[0].kwargs
     expected_kwargs = {
         "queue": "",
-        "arguments": {"x-expires": expected_queue_ttl},
+        "arguments": {"x-expires": expected_queue_ttl * 1000},  # x-expires uses milliseconds
     }
     assert queue_declare_kwargs == expected_kwargs
 
