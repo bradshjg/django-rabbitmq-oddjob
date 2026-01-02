@@ -1,24 +1,6 @@
 import time
 from urllib.parse import urlparse
 
-import pytest
-
-
-@pytest.fixture
-def user1_client(client, django_user_model):
-    username = "user1"
-    user = django_user_model.objects.create_user(username=username, password="password")
-    client.force_login(user)
-    return client
-
-
-@pytest.fixture
-def user2_client(client, django_user_model):
-    username = "user2"
-    user = django_user_model.objects.create_user(username=username, password="password")
-    client.force_login(user)
-    return client
-
 
 def test_run_add_sync_returns_result_immediately(client):
     resp = client.get("/run_add_sync/")
